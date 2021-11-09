@@ -31,7 +31,7 @@ function Install-PyVenvPackages {
     $pip_packages_host = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 
     "Install web packages......" | Write-Host -BackgroundColor black -ForegroundColor Green
-    & "$name\Scripts\python" -m pip install -U pip wheel setuptools pyreadline==2.1 autopep8 -i ($pip_packages_host)
+    & "$name\Scripts\python" -m pip install -U pip wheel setuptools pyreadline==2.1 black -i ($pip_packages_host)
     & "$name\Scripts\python" -m pip install -U librosa ipykernel tqdm opencv-python -i ($pip_packages_host)
     & "$name\Scripts\python" -m pip install -U paddlepaddle -i https://mirror.baidu.com/pypi/simple
 }
