@@ -73,7 +73,7 @@ def gen_noisy(clean_files, noise_files, audio_length, silence_length, sr, snr_ra
 
     # save list
     df = pd.DataFrame({"noisy": noisy_clean_files[::2], "clean": noisy_clean_files[1::2]})
-    df.to_csv(os.path.join(save_path, os.path.basename(save_path)), index=False)
+    df.to_csv(os.path.join(save_path, os.path.basename(save_path), ".csv"), index=False)
 
 
 def random_select_from(dataset_list):
