@@ -32,6 +32,7 @@ function Install-PyVenvPackages {
 
     "Install web packages......" | Write-Host -BackgroundColor black -ForegroundColor Green
     & "$name\Scripts\python" -m pip install -U pip wheel setuptools pyreadline==2.1 black -i ($pip_packages_host)
-    & "$name\Scripts\python" -m pip install -U librosa ipykernel tqdm opencv-python pandas -i ($pip_packages_host)
+    & "$name\Scripts\python" -m pip install -U librosa ipykernel opencv-python -i ($pip_packages_host)
+    & "$name\Scripts\python" -m pip install -U toml Cython pytest-runner tqdm pandas pesq pypesq pystoi -i ($pip_packages_host)
     & "$name\Scripts\python" -m pip install -U paddlepaddle -i https://mirror.baidu.com/pypi/simple
 }
