@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import soundfile as sf
 from tqdm import tqdm
+import paddle
 
 
 EPS = np.finfo(np.float32).eps
@@ -170,3 +171,52 @@ def snr_mix(clean, noise, snr, target_level=-25, target_level_floating_value=10,
         clean = clean / noisy_maxamplevel
 
     return noisy, clean
+
+
+def offline_laplace_norm(input):
+    """
+
+    Args:
+        input: [B, C, F, T]
+
+    Returns:
+        [B, C, F, T]
+    """
+    # utterance-level mu
+    mu = paddle.mean(input, axis=list(range(1, input.dim())), keepdim=True)
+
+    normed = input / (mu + EPS)
+
+    return normed
+
+
+def cumulative_laplace_norm(input):
+    """
+
+    Args:
+        input: [B, C, F, T]
+
+    Returns:
+        [B, C, F, T]
+    """
+    [batch_size, num_channels, num_freqs, num_frames] = input.shape
+    input = input.reshape([batch_size * num_channels, num_freqs, num_frames])
+
+    step_sum = paddle.sum(input, axis=1)  # [B * C, F, T] => [B, T]
+    cumulative_sum = paddle.cumsum(step_sum, axis=-1)  # [B, T]
+
+    entry_count = paddle.arange(
+        num_freqs,
+        num_freqs * num_frames + 1,
+        num_freqs,
+        dtype=input.dtype,
+    )
+    entry_count = entry_count.reshape([1, num_frames])  # [1, T]
+    entry_count = entry_count.expand_as(cumulative_sum)  # [1, T] => [B, T]
+
+    cumulative_mean = cumulative_sum / entry_count  # B, T
+    cumulative_mean = cumulative_mean.reshape([batch_size * num_channels, 1, num_frames])
+
+    normed = input / (cumulative_mean + EPS)
+
+    return normed.reshape([batch_size, num_channels, num_freqs, num_frames])
