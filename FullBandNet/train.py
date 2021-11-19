@@ -14,7 +14,8 @@ from paddle.io import DataLoader
 
 sys.path.append("./")
 from FullBandNet.model import FullBandNet
-from FullBandNet.dataset import DNS_Interspeech_2021_Dataset, unzip_dataset
+from FullBandNet.dataset import DNS_Interspeech_2021_Dataset
+from audiolib.audio import unzip_dataset
 from audiolib.mask import decompress_cIRM
 from audiolib.metrics import STOI, WB_PESQ, transform_pesq_range
 

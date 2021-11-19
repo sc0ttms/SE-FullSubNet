@@ -2,6 +2,7 @@
 
 import os
 import librosa
+import zipfile
 import pandas as pd
 import numpy as np
 import soundfile as sf
@@ -11,6 +12,13 @@ import paddle
 
 EPS = np.finfo(np.float32).eps
 np.random.seed(0)
+
+
+def unzip_dataset(path):
+    extract_dir = os.path.splitext(path)[0]
+    fp = zipfile.ZipFile(path, "r")
+    fp.extractall(extract_dir)
+    return extract_dir
 
 
 def save_files_to_csv(path, files, name):

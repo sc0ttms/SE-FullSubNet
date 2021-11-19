@@ -3,7 +3,6 @@
 import sys
 import os
 import toml
-import zipfile
 import librosa
 import pandas as pd
 from tqdm import tqdm
@@ -13,14 +12,7 @@ from paddle.io import Dataset, DataLoader
 
 sys.path.append("./")
 from audiolib.mask import get_cIRM
-from audiolib.audio import sub_sample, select_file, snr_mix
-
-
-def unzip_dataset(path):
-    extract_dir = os.path.splitext(path)[0]
-    fp = zipfile.ZipFile(path, "r")
-    fp.extractall(extract_dir)
-    return extract_dir
+from audiolib.audio import unzip_dataset, sub_sample, select_file, snr_mix
 
 
 class DNS_Interspeech_2021_Dataset(Dataset):
