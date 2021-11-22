@@ -176,7 +176,7 @@ if __name__ == "__main__":
     # load old model
     model_path = os.path.join(os.path.dirname(__file__), "models")
     os.makedirs(model_path, exist_ok=True)
-    old_model = os.path.join(model_path, "model_.pdparams")
+    old_model = os.path.join(model_path, "best_model_0_0.84745_2.08731.pdparams")
     if os.path.exists(old_model):
         ckpt = paddle.load(old_model)
         model.set_state_dict(ckpt)

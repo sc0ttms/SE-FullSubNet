@@ -6,7 +6,7 @@ import toml
 import librosa
 
 sys.path.append("./")
-from audiolib.audio import save_files_to_csv, split_clean, gen_noisy
+from audiolib.audio import unzip_dataset, save_files_to_csv, split_clean, gen_noisy
 
 
 def nosiy_synthesizer(config):
@@ -37,7 +37,7 @@ def nosiy_synthesizer(config):
     noise_files = librosa.util.find_files(noise_path, ext="wav")
 
     # split datasets
-    train_clean_files, valid_clean_files, test_clean_files = split_clean(clean_files, 0.1)
+    train_clean_files, valid_clean_files, test_clean_files = split_clean(clean_files, 0.01)
 
     # save noise files
     save_files_to_csv(st_noise_path, noise_files, "noise.csv")
@@ -75,6 +75,16 @@ if __name__ == "__main__":
     # get config
     toml_path = os.path.join(os.path.dirname(__file__), "noisy_synthesizer.toml")
     config = toml.load(toml_path)
+
+    # get datasets zip path
+    datasets_zip_path = os.path.abspath(config["datasets"]["path"]["zip"])
+
+    # extract datasets zip
+    datasets_path = os.path.splitext(datasets_zip_path)[0]
+    if not os.path.exists(datasets_path):
+        print("extract ing......")
+        datasets_path = unzip_dataset(datasets_zip_path)
+    print(f"datasets path {datasets_path}")
 
     # run noisy synthesizer
     nosiy_synthesizer(config)

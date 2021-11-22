@@ -3,6 +3,7 @@
 import sys
 import os
 import toml
+import zipfile
 import librosa
 import pandas as pd
 from tqdm import tqdm
