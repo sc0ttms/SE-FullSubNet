@@ -1,0 +1,46 @@
+[datasets.path]
+zip = "../datasets/DNS_INTERSPEECH_2021.zip"
+
+[train_dataset.path]
+clean = "../datasets/DNS_INTERSPEECH_2021/clean/mandarin_speech/train_clean.csv"
+noise = "../datasets/DNS_INTERSPEECH_2021/noise/noise.csv"
+
+[valid_dataset.path]
+noisy_clean = "../datasets/DNS_INTERSPEECH_2021/valid/valid.csv"
+
+[test_dataset.path]
+noisy_clean = "../datasets/DNS_INTERSPEECH_2021/test/test.csv"
+
+[train_dataset.args]
+sr = 16000
+n_fft = 512
+win_length = 512
+hop_length = 256
+snr_range = [-10, 20]
+audio_length = 3.072
+silence_length = 0.2
+target_level = -25
+target_level_floating_value = 10
+files_limit = 256
+
+[train_dataset.dataloader]
+batch_size = 4
+num_workers = 0
+drop_last = false
+
+[model.args]
+num_freqs = 257
+fullband_num_neighbors = 0
+subband_num_neighbors = 15
+fullband_hidden_size = 512
+subband_hidden_size = 384
+fullband_num_layers = 2
+subband_num_layers = 2
+num_groups_in_drop_band = 2
+dropout = 0
+look_ahead = 2
+
+[train]
+optimizer = "Adam"
+lr = 1e-3
+n_epoch = 10
