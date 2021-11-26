@@ -11,7 +11,7 @@ from audio.utils import unzip
 
 if __name__ == "__main__":
     # get config
-    toml_path = os.path.join(os.path.dirname(__file__), "unzip_dataset_cfg.toml")
+    toml_path = os.path.join(os.path.dirname(__file__), "unzip_cfg.toml")
     config = toml.load(toml_path)
 
     # get datasets zip path
