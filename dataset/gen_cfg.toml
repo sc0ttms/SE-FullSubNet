@@ -1,0 +1,7 @@
+[random]
+seed = 0
+
+[dataset]
+audio_format = "wav"
+valid_ratio = 0.1
+test_ratio = 0.1

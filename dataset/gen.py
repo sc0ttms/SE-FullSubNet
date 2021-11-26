@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+
+import sys
+import os
+import re
+import toml
+import librosa
+import numpy as np
+
+
+sys.path.append(os.getcwd())
+from audio.utils import save_to_csv
+
+
+def split_data(data, valid_ratio=0.1, test_ratio=0.1):
+    # get ln en
+    data_len = len(data)
+    valid_len = int(data_len * valid_ratio)
+    test_len = int(data_len * test_ratio)
+
+    # random choice idx for valid and test
+    data_idx = np.arange(data_len)
+    vt_mask = np.random.choice(data_idx, valid_len + test_len, replace=False)
+    valid_mask = vt_mask[:valid_len]
+    test_mask = vt_mask[valid_len + 1 :]
+
+    # gen set
+    train_files = [data[file] for file in range(data_len) if file not in vt_mask]
+    valid_files = [data[file] for file in range(data_len) if file in valid_mask]
+    test_files = [data[file] for file in range(data_len) if file in test_mask]
+
+    return train_files, valid_files, test_files
+
+
+def gen(set_path, config):
+    # get clean and noisy path
+    noisy_path = os.path.join(set_path, "noisy")
+    clean_path = os.path.join(set_path, "clean")
+
+    # get dataset args
+    audio_format = config["dataset"]["audio_format"]
+    valid_ratio = config["dataset"]["valid_ratio"]
+    test_ratio = config["dataset"]["test_ratio"]
+
+    # find all files
+    noisy_files = librosa.util.find_files(noisy_path, ext=audio_format)
+    noisy_files.sort(key=lambda x: int(re.findall("\d+", x)[-1]))
+    clean_files = librosa.util.find_files(clean_path, ext=audio_format)
+    clean_files.sort(key=lambda x: int(re.findall("\d+", x)[-1]))
+    assert len(noisy_files) == len(clean_files)
+
+    # merge noisy and clean
+    noisy_clean_files = [file for file in zip(noisy_files, clean_files)]
+
+    # split noisy_clean_files
+    train_files, valid_files, test_files = split_data(noisy_clean_files, valid_ratio=valid_ratio, test_ratio=test_ratio)
+
+    # save set
+    save_to_csv(set_path, train_files, "train.csv")
+    save_to_csv(set_path, valid_files, "valid.csv")
+    save_to_csv(set_path, test_files, "test.csv")
+
+
+if __name__ == "__main__":
+    # get unzip config
+    toml_path = os.path.join(os.path.dirname(__file__), "unzip_cfg.toml")
+    config = toml.load(toml_path)
+    # get unzip path
+    root_path = os.path.abspath(config["path"]["root"])
+    zip_path = os.path.join(root_path, config["path"]["zip"])
+    unzip_path = os.path.splitext(zip_path)[0]
+
+    # get gen csv config
+    toml_path = os.path.join(os.path.dirname(__file__), "gen_cfg.toml")
+    config = toml.load(toml_path)
+    # get seed
+    seed = config["random"]["seed"]
+    # set seed
+    np.random.seed(seed)
+
+    # gen set
+    gen(unzip_path, config)
