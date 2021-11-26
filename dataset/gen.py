@@ -5,11 +5,8 @@ import os
 import re
 import toml
 import librosa
+import pandas as pd
 import numpy as np
-
-
-sys.path.append(os.getcwd())
-from audio.utils import save_to_csv
 
 
 def split_data(data, valid_ratio=0.1, test_ratio=0.1):
@@ -56,9 +53,12 @@ def gen(set_path, config):
     train_files, valid_files, test_files = split_data(noisy_clean_files, valid_ratio=valid_ratio, test_ratio=test_ratio)
 
     # save set
-    save_to_csv(set_path, train_files, "train.csv")
-    save_to_csv(set_path, valid_files, "valid.csv")
-    save_to_csv(set_path, test_files, "test.csv")
+    df = pd.DataFrame(train_files)
+    df.to_csv(os.path.join(set_path, "train.csv"), index=False, header=None)
+    df = pd.DataFrame(valid_files)
+    df.to_csv(os.path.join(set_path, "valid.csv"), index=False, header=None)
+    df = pd.DataFrame(test_files)
+    df.to_csv(os.path.join(set_path, "test.csv"), index=False, header=None)
 
 
 if __name__ == "__main__":

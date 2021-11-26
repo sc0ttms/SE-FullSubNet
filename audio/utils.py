@@ -3,7 +3,6 @@
 import os
 import zipfile
 import tqdm
-import pandas as pd
 
 
 def unzip(zip_path, unzip_path=None):
@@ -30,15 +29,3 @@ def unzip(zip_path, unzip_path=None):
                 print(e)
 
     return unzip_path
-
-
-def save_to_csv(path, data, name):
-    """[summary]
-
-    Args:
-        path (str): save path
-        data (dict): pandas data input
-        name (str): csv file name
-    """
-    df = pd.DataFrame(data=data)
-    df.to_csv(os.path.join(path, name), index=False)
