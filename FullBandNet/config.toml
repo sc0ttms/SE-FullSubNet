@@ -1,34 +1,22 @@
-[datasets.path]
-zip = "../data/data117156/DNS_INTERSPEECH_2021.zip"
+[path]
+# root = "../../data/data118354"
+root = "D:/ML/datasets"
+zip = "MINI_DNS_INTERSPEECH_2021_MANDARIN.zip"
 
-[train_dataset.path]
-clean = "../data/data117156/DNS_INTERSPEECH_2021/clean/mandarin_speech/train_clean.csv"
-noise = "../data/data117156/DNS_INTERSPEECH_2021/noise/noise.csv"
-
-[valid_dataset.path]
-noisy_clean = "../data/data117156/DNS_INTERSPEECH_2021/valid/valid.csv"
-
-[test_dataset.path]
-noisy_clean = "../data/data117156/DNS_INTERSPEECH_2021/test/test.csv"
-
-[train_dataset.args]
-sr = 16000
-n_fft = 512
-win_length = 512
-hop_length = 256
-snr_range = [-10, 20]
-audio_length = 3.072
-silence_length = 0.2
-target_level = -25
-target_level_floating_value = 10
-files_limit = 0
-
-[train_dataset.dataloader]
-batch_size = 512
+[dataloader]
+batch_size = 20
 num_workers = 4
 drop_last = false
 
-[model.args]
+[dataset]
+sr = 16000
+n_fft = 512
+win_len = 512
+hop_len = 256
+audio_len = 3.072
+limit = 0
+
+[model]
 num_freqs = 257
 hidden_size = 512
 num_layers = 3
@@ -36,6 +24,10 @@ dropout = 0
 look_ahead = 2
 
 [train]
+use_amp = true
+resume = false
 optimizer = "Adam"
 lr = 1e-3
 n_epoch = 9999
+save_checkpoint_interval = 9999
+clip_grad_norm_value = 10.0

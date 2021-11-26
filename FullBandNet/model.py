@@ -6,8 +6,9 @@ import toml
 import paddle
 import paddle.nn as nn
 
-sys.path.append("./")
-from audiolib.audio import offline_laplace_norm, cumulative_laplace_norm
+
+sys.path.append(os.getcwd())
+from audio.feature import offline_laplace_norm, cumulative_laplace_norm
 
 
 class FullBandNet(nn.Layer):
@@ -35,10 +36,10 @@ class FullBandNet(nn.Layer):
         # [B, F, T] -> [B, 1, F, T]
         noisy_mag = noisy_mag.unsqueeze(1)
         # pad
-        noisy_mag = nn.functional.pad(noisy_mag, [0, 0, 0, 0, 0, 0, 0, self.look_ahead])
+        noisy_mag = nn.functional.pad(noisy_mag, [0, self.look_ahead, 0, 0])
         # check num_channels
         [batch_size, num_channels, num_freqs, num_frames] = noisy_mag.shape
-        assert num_channels == 1, f"{self.__class__.__name__} takes the mag feature as inputs."
+        assert num_channels == 1
 
         # norm
         if self.mode in ["train", "valid"]:
@@ -63,27 +64,39 @@ if __name__ == "__main__":
     # get config
     toml_path = os.path.join(os.path.dirname(__file__), "config.toml")
     config = toml.load(toml_path)
+    # get unzip path
+    root_path = os.path.abspath(config["path"]["root"])
+    zip_path = os.path.join(root_path, config["path"]["zip"])
+    unzip_path = os.path.splitext(zip_path)[0]
+    # get train args
+    use_amp = False if device == "cpu" else config["train"]["use_amp"]
+    clip_grad_norm_value = config["train"]["clip_grad_norm_value"]
 
     # config model
-    model = FullBandNet(config["model"]["args"])
+    model = FullBandNet(config["model"])
     print(model)
 
     # config optimizer
     optimizer = getattr(paddle.optimizer, config["train"]["optimizer"])(
         parameters=model.parameters(),
         learning_rate=config["train"]["lr"],
+        grad_clip=nn.ClipGradByNorm(clip_norm=clip_grad_norm_value),
     )
-    print(optimizer)
+
+    # scaler
+    scaler = paddle.amp.GradScaler()
 
     # gen test data
-    noisy_mag = paddle.randn([3, config["model"]["args"]["num_freqs"], 10])  # [B, F, T]
-    cIRM = paddle.randn([3, config["model"]["args"]["num_freqs"], 10, 2])  # [B, F, T, 2]
+    noisy_mag = paddle.randn([3, config["model"]["num_freqs"], 10])
+    cIRM = paddle.randn([3, config["model"]["num_freqs"], 10, 2])
 
     # test model and optimizer
-    cRM = model(noisy_mag)
-    loss = model.loss(cRM, cIRM)
-    loss.backward()
-    optimizer.step()
+    with paddle.amp.auto_cast(enable=use_amp):
+        cRM = model(noisy_mag)
+        loss = model.loss(cRM, cIRM)
+    scaled = scaler.scale(loss)
+    scaled.backward()
+    scaler.minimize(optimizer, scaled)
     optimizer.clear_grad()
 
     pass
