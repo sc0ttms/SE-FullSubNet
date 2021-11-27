@@ -2,7 +2,7 @@
 
 import os
 import zipfile
-import tqdm
+from tqdm import tqdm
 
 
 def unzip(zip_path, unzip_path=None):
@@ -22,7 +22,7 @@ def unzip(zip_path, unzip_path=None):
 
     # unzip
     with zipfile.ZipFile(zip_path) as zf:
-        for file in tqdm.tqdm(zf.infolist(), desc="unzip..."):
+        for file in tqdm(zf.infolist(), desc="unzip..."):
             try:
                 zf.extract(file, unzip_path)
             except zipfile.error as e:
