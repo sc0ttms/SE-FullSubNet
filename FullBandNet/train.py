@@ -2,126 +2,305 @@
 
 import sys
 import os
+from numpy import random
 import toml
 import librosa
+import librosa.display
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from pathlib import Path
-from pesq import PesqError
+from joblib import Parallel, delayed
 import paddle
+import paddle.nn as nn
 from paddle.io import DataLoader
+from paddle.amp import GradScaler, auto_cast
+from paddle.signal import stft, istft
+from visualdl import LogWriter
 
 
 sys.path.append("./")
+from dataset.dataset import DNS_Dataset
 from FullBandNet.model import FullBandNet
-from FullBandNet.dataset import DNS_Interspeech_2021_Dataset
-from audiolib.audio import unzip_dataset
-from audiolib.mask import decompress_cIRM
-from audiolib.metrics import STOI, WB_PESQ, transform_pesq_range
+from audio.mask import get_cIRM, decompress_cIRM
+from audio.metrics import STOI, WB_PESQ, transform_pesq_range
 
 
-def train(model, train_iter, valid_iter, config):
-    # config n_epoch
-    n_epoch = config["train"]["n_epoch"]
-    # config fft params
-    win_length = config["train_dataset"]["args"]["win_length"]
-    hop_length = config["train_dataset"]["args"]["hop_length"]
-    # init best_score
-    best_score = 0.0
+class Trainer:
+    def __init__(self, model, train_iter, valid_iter, config, device):
+        # get model path
+        self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
+        # get logs path
+        self.logs_path = os.path.join(os.path.dirname(__file__), "logs")
 
-    # config model path
-    model_path = os.path.join(os.path.dirname(__file__), "models")
-    os.makedirs(model_path, exist_ok=True)
+        # get dataset args
+        self.sr = config["dataset"]["sr"]
+        self.n_fft = config["dataset"]["n_fft"]
+        self.win_len = config["dataset"]["win_len"]
+        self.hop_len = config["dataset"]["hop_len"]
+        self.window = paddle.to_tensor(np.hanning(self.win_len), dtype=paddle.float32)
 
-    # config optimizer
-    optimizer = getattr(paddle.optimizer, config["train"]["optimizer"])(
-        parameters=model.parameters(),
-        learning_rate=config["train"]["lr"],
-    )
+        # get train args
+        self.use_amp = False if device == "cpu" else config["train"]["use_amp"]
+        self.resume = config["train"]["resume"]
+        self.epochs = config["train"]["epochs"]
+        self.save_checkpoint_interval = config["train"]["save_checkpoint_interval"]
+        self.valid_interval = config["train"]["valid_interval"]
+        self.audio_visual_samples = config["train"]["audio_visual_samples"]
 
-    for epoch in range(0, n_epoch):
-        print(f"{'=' * 20} {epoch} epoch {'=' * 20}")
+        # init common args
+        self.start_epoch = 1
+        self.best_score = 0.0
 
-        # train
-        model.train()
-        train_loss_total = 0.0
-        for noisy_spec, cIRM in tqdm(train_iter, desc="train"):
-            noisy_mag = paddle.abs(noisy_spec).astype(paddle.float32)
-            cRM = model(noisy_mag)
-            loss = model.loss(cRM, cIRM)
-            loss.backward()
-            optimizer.step()
-            optimizer.clear_grad()
-            # cum loss
-            train_loss_total += loss.item()
-        # get train loss
-        train_loss = train_loss_total / len(train_iter)
-        print(f"{epoch} epoch {train_loss:.5f} train loss")
+        # amp
+        self.scaler = GradScaler(enable=self.use_amp)
 
-        # save cur model
-        # del old model
-        for path in Path(model_path).rglob("model_*.pdparams"):
-            os.remove(path)
-        # save new model
-        paddle.save(model.state_dict(), os.path.join(model_path, f"model_{epoch}_{train_loss:.5f}.pdparams"))
+        # set model
+        self.model = model
 
-        # valid
-        model.eval()
-        valid_loss_total = 0.0
-        metrics = {
-            "STOI": [],
-            "WB_PESQ": [],
+        # set iter
+        self.train_iter = train_iter
+        self.valid_iter = valid_iter
+
+        # config optimizer
+        self.optimizer = getattr(paddle.optimizer, config["train"]["optimizer"])(
+            parameters=model.parameters(),
+            learning_rate=config["train"]["lr"],
+            grad_clip=nn.ClipGradByNorm(clip_norm=config["train"]["clip_grad_norm_value"]),
+        )
+
+        # mkdir path
+        self.prepare_empty_path()
+
+        # resume
+        if self.resume:
+            self.resume_checkpoint()
+
+        # config logs
+        self.writer = LogWriter(logdir=self.logs_path, max_queue=5, flush_secs=60)
+        self.writer.add_text(
+            tag="config",
+            text_string=f"<pre \n{toml.dumps(config)} \n</pre>",
+            step=1,
+        )
+
+        # print params
+        self.print_networks()
+
+    def prepare_empty_path(self):
+        paths = [self.checkpoints_path, self.logs_path]
+        for path in paths:
+            if self.resume:
+                assert os.path.exists(path)
+            else:
+                os.makedirs(path, exist_ok=True)
+
+    def save_checkpoint(self, epoch, is_best_epoch=False):
+        print(f"Saving {epoch} epoch model checkpoint...")
+
+        state_dict = {
+            "epoch": epoch,
+            "best_score": self.best_score,
+            "model": self.model.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "scaler": self.scaler.state_dict(),
         }
-        for noisy_spec, clean, cIRM in tqdm(valid_iter, desc="valid"):
-            with paddle.no_grad():
-                noisy_mag = paddle.abs(noisy_spec).astype(paddle.float32)
-                cRM = model(noisy_mag)
-                loss = model.loss(cRM, cIRM)
-                # cum loss
-                valid_loss_total += loss.item()
 
-                # decompress cRM
-                cRM = decompress_cIRM(cRM)
-                # enh spec
-                noisy_real = paddle.real(noisy_spec)
-                noisy_imag = paddle.imag(noisy_spec)
-                enh_spec_real = cRM[..., 0] * noisy_real - cRM[..., 1] * noisy_imag
-                enh_spec_imag = cRM[..., 1] * noisy_real + cRM[..., 0] * noisy_imag
-                enh_spec = paddle.squeeze(enh_spec_real + 1j * enh_spec_imag, axis=0)
-                # to numpy
-                enh_spec = enh_spec.numpy()
-                # enh
-                enh = librosa.istft(enh_spec, win_length=win_length, hop_length=hop_length)
-                # save metrics
-                clean = clean.detach().squeeze(0).cpu().numpy()
-                metrics["STOI"].append(STOI(clean, enh))
-                try:
-                    metrics["WB_PESQ"].append(WB_PESQ(clean, enh))
-                except:
-                    print(
-                        f"WB_PESQ error: {PesqError}, I don't know why, submit issue to https://github.com/ludlows/python-pesq"
-                    )
+        # save latest_model.tar
+        paddle.save(state_dict, os.path.join(self.checkpoints_path, "latest_model.tar"))
 
-        # get valid loss
-        valid_loss = valid_loss_total / len(valid_iter)
-        print(f"{epoch} epoch {valid_loss:.5f} valid loss")
-        # get metrics
-        stoi_score = np.mean(metrics["STOI"])
-        wb_pesq_score = np.mean(metrics["WB_PESQ"])
-        print(f"{epoch} epoch {stoi_score:.5f} STOI {wb_pesq_score:.5f} WB_PESQ")
-        # check best score
-        metrics_score = (stoi_score + transform_pesq_range(wb_pesq_score)) / 2
-        if metrics_score > best_score:
-            best_score = metrics_score
-            # save best model
-            # del old model
-            for path in Path(model_path).rglob("best_model_*.pdparams"):
-                os.remove(path) 
-            # save new model
-            paddle.save(
-                model.state_dict(),
-                os.path.join(model_path, f"best_model_{epoch}_{stoi_score:.5f}_{wb_pesq_score:.5f}.pdparams"),
+        # save best_model.tar
+        if is_best_epoch:
+            paddle.save(state_dict, os.path.join(self.checkpoints_path, "best_model.tar"))
+
+    def resume_checkpoint(self):
+        latest_model_path = os.path.join(self.checkpoints_path, "latest_model.tar")
+        assert os.path.exists(latest_model_path)
+
+        checkpoint = paddle.load(latest_model_path)
+
+        self.start_epoch = checkpoint["epoch"] + 1
+        self.best_score = checkpoint["best_score"]
+        self.optimizer.set_state_dict(checkpoint["optimizer"])
+        self.model.set_state_dict(checkpoint["model"])
+        self.scaler.load_state_dict(checkpoint["scaler"])
+
+        print(f"Model checkpoint loaded. Training will begin at {self.start_epoch} epoch.")
+
+    def print_networks(self):
+        print(self.model)
+
+        params_of_network = 0
+        for param in model.parameters():
+            params_of_network += param.numel()
+
+        print(f"Params of Network: {params_of_network / 1e6} million.")
+
+    def is_best_epoch(self, score):
+        if score > self.best_score:
+            self.best_score = score
+            return True
+        else:
+            return False
+
+    def audio_visualization(self, noisy, clean, enh, name, epoch):
+        self.writer.add_audio("audio/noisy", noisy, epoch, sample_rate=self.sr)
+        self.writer.add_audio("audio/clean", clean, epoch, sample_rate=self.sr)
+        self.writer.add_audio("audio/enh", enh, epoch, sample_rate=self.sr)
+
+        # Visualize the spectrogram of noisy speech, clean speech, and enhanced speech
+        noisy_mag, _ = librosa.magphase(librosa.stft(noisy, n_fft=320, hop_length=160, win_length=320))
+        clean_mag, _ = librosa.magphase(librosa.stft(clean, n_fft=320, hop_length=160, win_length=320))
+        enh_mag, _ = librosa.magphase(librosa.stft(enh, n_fft=320, hop_length=160, win_length=320))
+        fig, axes = plt.subplots(3, 1, figsize=(6, 6))
+        for k, mag in enumerate([noisy_mag, clean_mag, enh_mag]):
+            axes[k].set_title(
+                f"mean: {np.mean(mag):.3f}, "
+                f"std: {np.std(mag):.3f}, "
+                f"max: {np.max(mag):.3f}, "
+                f"min: {np.min(mag):.3f}"
             )
+            librosa.display.specshow(librosa.amplitude_to_db(mag), cmap="magma", y_axis="linear", ax=axes[k], sr=16000)
+        plt.tight_layout()
+        self.writer.add_figure(f"spec/{name}", fig, epoch)
+
+    def metrics_visualization(self, noisy_list, clean_list, enh_list, epoch, n_jobs=8):
+        noisy_stoi_score = Parallel(n_jobs=n_jobs)(
+            delayed(STOI)(noisy, clean) for noisy, clean in tqdm(zip(noisy_list, clean_list))
+        )
+        enh_stoi_score = Parallel(n_jobs=n_jobs)(
+            delayed(STOI)(noisy, clean) for noisy, clean in tqdm(zip(enh_list, clean_list))
+        )
+        noisy_stoi_score_mean = np.mean(noisy_stoi_score)
+        enh_stoi_score_mean = np.mean(enh_stoi_score)
+        self.writer.add_scalar("STOI/valid/noisy", noisy_stoi_score_mean, epoch)
+        self.writer.add_scalar("STOI/valid/enh", enh_stoi_score_mean, epoch)
+
+        noisy_wb_pesq_score = Parallel(n_jobs=n_jobs)(
+            delayed(WB_PESQ)(noisy, clean) for noisy, clean in tqdm(zip(noisy_list, clean_list))
+        )
+        enh_wb_pesq_score = Parallel(n_jobs=n_jobs)(
+            delayed(WB_PESQ)(noisy, clean) for noisy, clean in tqdm(zip(enh_list, clean_list))
+        )
+        noisy_wb_pesq_score_mean = np.mean(noisy_wb_pesq_score)
+        enh_wb_pesq_score_mean = np.mean(enh_wb_pesq_score)
+        self.writer.add_scalar("WB_PESQ/valid/noisy", noisy_wb_pesq_score_mean, epoch)
+        self.writer.add_scalar("WB_PESQ/valid/enh", enh_wb_pesq_score_mean, epoch)
+
+        return (enh_stoi_score_mean + transform_pesq_range(enh_wb_pesq_score_mean)) / 2
+
+    def hparams_visualization(self):
+        hparams_dict = {
+            "lr": self.optimizer.get_lr(),
+        }
+        metrics_list = ["STOI/valid/noisy", "STOI/valid/enh", "WB_PESQ/valid/noisy", "WB_PESQ/valid/enh"]
+        self.writer.add_hparams(
+            hparams_dict=hparams_dict,
+            metrics_list=metrics_list,
+        )
+
+    def set_model_to_train_mode(self):
+        self.model.train()
+
+    def set_model_to_eval_mode(self):
+        self.model.eval()
+
+    def train_epoch(self, epoch):
+        loss_total = 0.0
+        for noisy, clean in tqdm(self.train_iter, desc="train"):
+            self.optimizer.clear_grad()
+
+            noisy_spec = stft(noisy, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
+            clean_spec = stft(clean, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
+
+            noisy_mag = paddle.abs(noisy_spec)
+            cIRM = get_cIRM(noisy_spec, clean_spec)
+
+            with auto_cast(enable=self.use_amp):
+                cRM = self.model(noisy_mag)
+                loss = self.model.loss(cRM, cIRM)
+
+            scaled = self.scaler.scale(loss)
+            scaled.backward()
+            self.scaler.minimize(self.optimizer, scaled)
+
+            loss_total += loss.item()
+
+        # logs
+        self.writer.add_scalar("loss/train", loss_total / len(self.train_iter), epoch)
+
+    def valid_epoch(self, epoch):
+        audio_visual_samples_num = 0
+        noisy_list = []
+        clean_list = []
+        enh_list = []
+
+        loss_total = 0.0
+        for noisy, clean, noisy_file in tqdm(self.valid_iter, desc="valid"):
+            noisy_spec = stft(noisy, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
+            clean_spec = stft(clean, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
+
+            noisy_mag = paddle.abs(noisy_spec)
+            cIRM = get_cIRM(noisy_spec, clean_spec)
+
+            cRM = self.model(noisy_mag)
+            loss = self.model.loss(cRM, cIRM)
+
+            loss_total += loss.item()
+
+            cRM = decompress_cIRM(cRM)
+            noisy_real = paddle.real(noisy_spec)
+            noisy_imag = paddle.imag(noisy_spec)
+            enh_spec_real = cRM[..., 0] * noisy_real - cRM[..., 1] * noisy_imag
+            enh_spec_imag = cRM[..., 1] * noisy_real + cRM[..., 0] * noisy_imag
+            enh_spec = paddle.squeeze(enh_spec_real + 1j * enh_spec_imag, axis=0)
+            enh = istft(enh_spec, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
+
+            noisy = noisy.detach().squeeze(0).cpu().numpy()
+            clean = clean.detach().squeeze(0).cpu().numpy()
+            enh = enh.detach().squeeze(0).cpu().numpy()
+            assert len(noisy) == len(clean) == len(enh)
+
+            audio_visual_samples_num += 1
+            if audio_visual_samples_num <= self.audio_visual_samples:
+                self.audio_visualization(noisy, clean, enh, noisy_file, epoch)
+
+            noisy_list.append(noisy)
+            clean_list.append(clean)
+            enh_list.append(enh)
+
+        # logs
+        self.writer.add_scalar("loss/valid", loss_total / len(self.valid_iter), epoch)
+
+        # visual metrics and get valid score
+        metrics_score = self.metrics_visualization(noisy_list, clean_list, enh_list, epoch, n_jobs=8)
+
+        return metrics_score
+
+    def train(self):
+        for epoch in range(self.start_epoch, self.epochs + 1):
+            print(f"{'=' * 20} {epoch} epoch start {'=' * 20}")
+
+            # train
+            self.set_model_to_train_mode()
+            self.train_epoch(epoch)
+
+            if self.save_checkpoint_interval != 0 and (epoch % self.save_checkpoint_interval == 0):
+                self.save_checkpoint(epoch)
+
+            # valid
+            if epoch % self.valid_interval == 0:
+                print(f"Train has finished, Valid is in progress...")
+
+                self.set_model_to_eval_mode()
+                metric_score = self.valid_epoch(epoch)
+
+                if self.is_best_epoch(metric_score):
+                    self.save_checkpoint(epoch, is_best_epoch=True)
+
+            # logs hparams
+            self.hparams_visualization()
+            print(f"{'=' * 20} {epoch} epoch end {'=' * 20}")
 
 
 if __name__ == "__main__":
@@ -130,27 +309,29 @@ if __name__ == "__main__":
     paddle.set_device(device)
     print(f"device {device}")
 
+    # config not show plt
+    matplotlib.use('Agg')
+
     # get config
     toml_path = os.path.join(os.path.dirname(__file__), "config.toml")
     config = toml.load(toml_path)
 
-    # get train dataset dataloader
-    batch_size = config["train_dataset"]["dataloader"]["batch_size"]
-    num_workers = config["train_dataset"]["dataloader"]["num_workers"]
-    drop_last = config["train_dataset"]["dataloader"]["drop_last"]
+    # get seed
+    # seed = config["random"]["seed"]
+    # np.random.seed(seed)
 
-    # get datasets zip path
-    datasets_zip_path = os.path.abspath(config["datasets"]["path"]["zip"])
+    # get unzip path
+    root_path = os.path.abspath(config["path"]["root"])
+    zip_path = os.path.join(root_path, config["path"]["zip"])
+    unzip_path = os.path.splitext(zip_path)[0]
 
-    # extract datasets zip
-    datasets_path = os.path.splitext(datasets_zip_path)[0]
-    if not os.path.exists(datasets_path):
-        print("extract ing......")
-        datasets_path = unzip_dataset(datasets_zip_path)
-    print(f"datasets path {datasets_path}")
+    # get dataloader args
+    batch_size = config["dataloader"]["batch_size"]
+    num_workers = 0 if device == "cpu" else config["dataloader"]["num_workers"]
+    drop_last = config["dataloader"]["drop_last"]
 
     # get train_iter
-    train_set = DNS_Interspeech_2021_Dataset(datasets_path, config, mode="train")
+    train_set = DNS_Dataset(unzip_path, config, mode="train")
     train_iter = DataLoader(
         train_set,
         batch_size=batch_size,
@@ -160,7 +341,7 @@ if __name__ == "__main__":
     )
 
     # get valid_iter
-    valid_set = DNS_Interspeech_2021_Dataset(datasets_path, config, mode="valid")
+    valid_set = DNS_Dataset(unzip_path, config, mode="valid")
     valid_iter = DataLoader(
         valid_set,
         batch_size=1,
@@ -170,17 +351,12 @@ if __name__ == "__main__":
     )
 
     # config model
-    model = FullBandNet(config["model"]["args"])
-    print(model)
+    model = FullBandNet(config["model"])
 
-    # load old model
-    model_path = os.path.join(os.path.dirname(__file__), "models")
-    os.makedirs(model_path, exist_ok=True)
-    old_model = os.path.join(model_path, "best_model_0_0.84745_2.08731.pdparams")
-    if os.path.exists(old_model):
-        ckpt = paddle.load(old_model)
-        model.set_state_dict(ckpt)
+    # trainer
+    trainer = Trainer(model, train_iter, valid_iter, config, device)
 
-    train(model, train_iter, valid_iter, config)
+    # train
+    trainer.train()
 
     pass
