@@ -46,7 +46,7 @@ class DNS_Dataset(Dataset):
 
         # set len
         self.length = len(self.noisy_files)
-        print(f"number of files {self.length}")
+        print(f"number of {self.mode} files {self.length}")
 
     def __len__(self):
         return self.length
