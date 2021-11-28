@@ -2,11 +2,9 @@
 
 import sys
 import os
-from numpy import random
 import toml
 import librosa
 import librosa.display
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
@@ -24,6 +22,8 @@ from dataset.dataset import DNS_Dataset
 from FullBandNet.model import FullBandNet
 from audio.mask import get_cIRM, decompress_cIRM
 from audio.metrics import STOI, WB_PESQ, transform_pesq_range
+
+plt.switch_backend("agg")
 
 
 class Trainer:
@@ -308,9 +308,6 @@ if __name__ == "__main__":
     device = paddle.get_device()
     paddle.set_device(device)
     print(f"device {device}")
-
-    # config not show plt
-    matplotlib.use('Agg')
 
     # get config
     toml_path = os.path.join(os.path.dirname(__file__), "config.toml")
