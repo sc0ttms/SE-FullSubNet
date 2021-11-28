@@ -5,6 +5,8 @@ import os
 import toml
 import paddle
 import paddle.nn as nn
+from paddle.framework import ParamAttr
+from paddle.nn.initializer import XavierNormal, Normal
 
 
 sys.path.append(os.getcwd())
@@ -26,8 +28,22 @@ class FullBandNet(nn.Layer):
         self.look_ahead = config["look_ahead"]
 
         # net
-        self.seq = nn.LSTM(self.num_freqs, self.hidden_size, self.num_layers, dropout=self.dropout)
-        self.fc = nn.Linear(self.hidden_size, self.num_freqs * 2)
+        self.seq = nn.LSTM(
+            self.num_freqs,
+            self.hidden_size,
+            self.num_layers,
+            dropout=self.dropout,
+            weight_ih_attr=ParamAttr(initializer=XavierNormal()),
+            weight_hh_attr=ParamAttr(initializer=XavierNormal()),
+            bias_ih_attr=ParamAttr(initializer=Normal()),
+            bias_hh_attr=ParamAttr(initializer=Normal()),
+        )
+        self.fc = nn.Linear(
+            self.hidden_size,
+            self.num_freqs * 2,
+            weight_attr=ParamAttr(initializer=XavierNormal()),
+            bias_attr=ParamAttr(initializer=Normal()),
+        )
 
         # loss
         self.loss = nn.MSELoss()
