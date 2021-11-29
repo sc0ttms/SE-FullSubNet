@@ -32,7 +32,7 @@ class Trainer:
         # get checkpoints path
         self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
         # get logs path
-        self.logs_path = os.path.join(os.path.dirname(__file__), "logs")
+        self.logs_path = os.path.join(os.path.dirname(__file__), "logs_train")
 
         # get dataset args
         self.sr = config["dataset"]["sr"]
