@@ -28,7 +28,7 @@ plt.switch_backend("agg")
 
 class Trainer:
     def __init__(self, model, train_iter, valid_iter, config, device):
-        # get model path
+        # get checkpoints path
         self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
         # get logs path
         self.logs_path = os.path.join(os.path.dirname(__file__), "logs")
