@@ -2,9 +2,9 @@
 seed = 0
 
 [path]
-root = "../../data/data119056"
-# root = "D:/ML/datasets"
-zip = "dns_interspeech_2021_mandarin_10h.zip"
+# root = "../../data/data119056"
+root = "D:/ML/datasets"
+zip = "dns_interspeech_2021_mandarin_100h.zip"
 
 [dataloader]
 batch_size = 20
