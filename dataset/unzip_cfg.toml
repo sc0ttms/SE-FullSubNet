@@ -1,4 +1,4 @@
 [path]
 # root = "../../data/data118354"
 root = "D:/ML/datasets"
-zip = "MINI_DNS_INTERSPEECH_2021_MANDARIN.zip"
+zip = "dns_interspeech_2021_mandarin_10h.zip"
