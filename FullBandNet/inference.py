@@ -209,7 +209,7 @@ if __name__ == "__main__":
     )
 
     # config model
-    model = FullBandNet(config["model"])
+    model = FullBandNet(config["model"], mode="test")
 
     # inferencer
     inference = Inferencer(model, test_iter, config)
