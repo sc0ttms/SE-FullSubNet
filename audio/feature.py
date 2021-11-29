@@ -6,6 +6,10 @@ import paddle
 EPS = np.finfo(np.float32).eps
 
 
+def is_clipped(data, clipping_threshold=0.99):
+    return any(abs(data) > clipping_threshold)
+
+
 def sub_sample(noisy, clean, samples):
     """random select fixed-length data from noisy and clean
 
