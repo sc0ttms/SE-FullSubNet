@@ -2,8 +2,8 @@
 seed = 0
 
 [path]
-# root = "../../data/data118354"
-root = "D:/ML/datasets"
+root = "../../data/data119056"
+# root = "D:/ML/datasets"
 zip = "dns_interspeech_2021_mandarin_10h.zip"
 
 [dataloader]
@@ -35,7 +35,7 @@ epochs = 500
 save_checkpoint_interval = 1
 valid_interval = 1
 clip_grad_norm_value = 10.0
-audio_visual_samples = 5
+audio_visual_samples = 20
 
 [inference]
-audio_visual_samples = 10
+audio_visual_samples = 20
