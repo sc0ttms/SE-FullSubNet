@@ -157,30 +157,60 @@ class Trainer:
         plt.tight_layout()
         self.writer.add_figure(f"spec/{name}", fig, epoch)
 
-    def metrics_visualization(self, noisy_list, clean_list, enh_list, epoch, n_jobs=8):
-        noisy_stoi_score = Parallel(n_jobs=n_jobs)(
-            delayed(STOI)(noisy, clean) for noisy, clean in tqdm(zip(noisy_list, clean_list))
-        )
-        enh_stoi_score = Parallel(n_jobs=n_jobs)(
-            delayed(STOI)(noisy, clean) for noisy, clean in tqdm(zip(enh_list, clean_list))
-        )
-        noisy_stoi_score_mean = np.mean(noisy_stoi_score)
-        enh_stoi_score_mean = np.mean(enh_stoi_score)
-        self.writer.add_scalar("STOI/valid/noisy", noisy_stoi_score_mean, epoch)
-        self.writer.add_scalar("STOI/valid/enh", enh_stoi_score_mean, epoch)
+    def metrics_visualization(self, noisy_list, clean_list, enh_list, epoch, n_fold=4, n_jobs=8):
+        score = {
+            "noisy": {
+                "STOI": [],
+                "WB_PESQ": [],
+            },
+            "enh": {
+                "STOI": [],
+                "WB_PESQ": [],
+            },
+        }
 
-        noisy_wb_pesq_score = Parallel(n_jobs=n_jobs)(
-            delayed(WB_PESQ)(noisy, clean) for noisy, clean in tqdm(zip(noisy_list, clean_list))
-        )
-        enh_wb_pesq_score = Parallel(n_jobs=n_jobs)(
-            delayed(WB_PESQ)(noisy, clean) for noisy, clean in tqdm(zip(enh_list, clean_list))
-        )
-        noisy_wb_pesq_score_mean = np.mean(noisy_wb_pesq_score)
-        enh_wb_pesq_score_mean = np.mean(enh_wb_pesq_score)
-        self.writer.add_scalar("WB_PESQ/valid/noisy", noisy_wb_pesq_score_mean, epoch)
-        self.writer.add_scalar("WB_PESQ/valid/enh", enh_wb_pesq_score_mean, epoch)
+        split_num = len(noisy_list) // n_fold
+        for n in range(n_fold):
+            noisy_stoi_score = Parallel(n_jobs=n_jobs)(
+                delayed(STOI)(noisy, clean)
+                for noisy, clean in tqdm(
+                    zip(
+                        noisy_list[n * split_num : (n + 1) * split_num], clean_list[n * split_num : (n + 1) * split_num]
+                    )
+                )
+            )
+            enh_stoi_score = Parallel(n_jobs=n_jobs)(
+                delayed(STOI)(noisy, clean)
+                for noisy, clean in tqdm(
+                    zip(enh_list[n * split_num : (n + 1) * split_num], clean_list[n * split_num : (n + 1) * split_num])
+                )
+            )
+            score["noisy"]["STOI"].append(np.mean(noisy_stoi_score))
+            score["enh"]["STOI"].append(np.mean(enh_stoi_score))
 
-        return (enh_stoi_score_mean + transform_pesq_range(enh_wb_pesq_score_mean)) / 2
+            noisy_wb_pesq_score = Parallel(n_jobs=n_jobs)(
+                delayed(WB_PESQ)(noisy, clean)
+                for noisy, clean in tqdm(
+                    zip(
+                        noisy_list[n * split_num : (n + 1) * split_num], clean_list[n * split_num : (n + 1) * split_num]
+                    )
+                )
+            )
+            enh_wb_pesq_score = Parallel(n_jobs=n_jobs)(
+                delayed(WB_PESQ)(noisy, clean)
+                for noisy, clean in tqdm(
+                    zip(enh_list[n * split_num : (n + 1) * split_num], clean_list[n * split_num : (n + 1) * split_num])
+                )
+            )
+            score["noisy"]["WB_PESQ"].append(np.mean(noisy_wb_pesq_score))
+            score["enh"]["WB_PESQ"].append(np.mean(enh_wb_pesq_score))
+
+        self.writer.add_scalar("STOI/valid/noisy", np.mean(score["noisy"]["STOI"]), epoch)
+        self.writer.add_scalar("STOI/valid/enh", np.mean(score["enh"]["STOI"]), epoch)
+        self.writer.add_scalar("WB_PESQ/valid/noisy", np.mean(score["noisy"]["WB_PESQ"]), epoch)
+        self.writer.add_scalar("WB_PESQ/valid/enh", np.mean(score["enh"]["WB_PESQ"]), epoch)
+
+        return (np.mean(score["enh"]["STOI"]) + transform_pesq_range(np.mean(score["enh"]["WB_PESQ"]))) / 2
 
     def hparams_visualization(self):
         hparams_dict = {
