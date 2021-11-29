@@ -4,7 +4,7 @@ seed = 0
 [path]
 # root = "../../data/data118354"
 root = "D:/ML/datasets"
-zip = "MINI_DNS_INTERSPEECH_2021_MANDARIN.zip"
+zip = "dns_interspeech_2021_mandarin_10h.zip"
 
 [dataloader]
 batch_size = 20
@@ -28,11 +28,14 @@ look_ahead = 2
 
 [train]
 use_amp = true
-resume = true
+resume = false
 optimizer = "Adam"
 lr = 1e-3
-epochs = 9999
+epochs = 500
 save_checkpoint_interval = 1
 valid_interval = 1
 clip_grad_norm_value = 10.0
 audio_visual_samples = 5
+
+[inference]
+audio_visual_samples = 10
