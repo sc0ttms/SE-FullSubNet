@@ -22,6 +22,7 @@ from dataset.dataset import DNS_Dataset
 from FullBandNet.model import FullBandNet
 from audio.mask import get_cIRM, decompress_cIRM
 from audio.metrics import STOI, WB_PESQ, transform_pesq_range
+from audio.utils import prepare_empty_path
 
 plt.switch_backend("agg")
 
@@ -70,7 +71,7 @@ class Trainer:
         )
 
         # mkdir path
-        self.prepare_empty_path()
+        prepare_empty_path([self.checkpoints_path, self.logs_path], self.resume)
 
         # resume
         if self.resume:
@@ -86,14 +87,6 @@ class Trainer:
 
         # print params
         self.print_networks()
-
-    def prepare_empty_path(self):
-        paths = [self.checkpoints_path, self.logs_path]
-        for path in paths:
-            if self.resume:
-                assert os.path.exists(path)
-            else:
-                os.makedirs(path, exist_ok=True)
 
     def save_checkpoint(self, epoch, is_best_epoch=False):
         print(f"Saving {epoch} epoch model checkpoint...")

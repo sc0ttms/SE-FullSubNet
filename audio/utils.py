@@ -29,3 +29,17 @@ def unzip(zip_path, unzip_path=None):
                 print(e)
 
     return unzip_path
+
+
+def prepare_empty_path(paths, resume=False):
+    """prepare empty path
+
+    Args:
+        paths (list): path list
+        resume (bool, optional): whether to resume. Defaults to False.
+    """
+    for path in paths:
+        if resume:
+            assert os.path.exists(path)
+        else:
+            os.makedirs(path, exist_ok=True)
