@@ -32,7 +32,7 @@ class Trainer:
         # get checkpoints path
         self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
         # get logs path
-        self.logs_path = os.path.join(os.path.dirname(__file__), "logs_train")
+        self.logs_path = os.path.join(os.path.dirname(__file__), "logs", "train")
 
         # get dataset args
         self.sr = config["dataset"]["sr"]
@@ -78,7 +78,7 @@ class Trainer:
             self.resume_checkpoint()
 
         # config logs
-        self.writer = LogWriter(logdir=self.logs_path, max_queue=5, flush_secs=60)
+        self.writer = LogWriter(logdir=os.path.join(self.logs_path, f"{self.start_epoch}"), max_queue=5, flush_secs=60)
         self.writer.add_text(
             tag="config",
             text_string=f"<pre \n{toml.dumps(config)} \n</pre>",
