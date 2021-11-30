@@ -1,4 +1,7 @@
 [path]
-root = "../../data/data119056"
-# root = "D:/ML/datasets"
-zip = "dns_interspeech_2021_mandarin_100h.zip"
+# root = "../../data/data119056" # aistudio
+# root = "D:/ML/datasets" # local
+# zip = "dns_interspeech_2021_mandarin_100h.zip" # aistudio and local
+# openi
+root = "/"
+zip = "dataset.zip"
