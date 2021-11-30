@@ -78,7 +78,9 @@ class Trainer:
             self.resume_checkpoint()
 
         # config logs
-        self.writer = LogWriter(logdir=os.path.join(self.logs_path, f"{self.start_epoch}"), max_queue=5, flush_secs=60)
+        self.writer = LogWriter(
+            logdir=os.path.join(self.logs_path, f"start_epoch_{self.start_epoch}"), max_queue=5, flush_secs=60
+        )
         self.writer.add_text(
             tag="config",
             text_string=f"<pre \n{toml.dumps(config)} \n</pre>",
@@ -137,9 +139,9 @@ class Trainer:
             return False
 
     def audio_visualization(self, noisy, clean, enh, name, epoch):
-        self.writer.add_audio("audio/{name}_noisy", noisy, epoch, sample_rate=self.sr)
-        self.writer.add_audio("audio/{name}_clean", clean, epoch, sample_rate=self.sr)
-        self.writer.add_audio("audio/{name}_enh", enh, epoch, sample_rate=self.sr)
+        self.writer.add_audio(f"audio/{name}_noisy", noisy, epoch, sample_rate=self.sr)
+        self.writer.add_audio(f"audio/{name}_clean", clean, epoch, sample_rate=self.sr)
+        self.writer.add_audio(f"audio/{name}_enh", enh, epoch, sample_rate=self.sr)
 
         # Visualize the spectrogram of noisy speech, clean speech, and enhanced speech
         noisy_mag, _ = librosa.magphase(librosa.stft(noisy, n_fft=320, hop_length=160, win_length=320))
