@@ -54,11 +54,11 @@ def gen(set_path, config):
 
     # save set
     df = pd.DataFrame(train_files)
-    df.to_csv(os.path.join(set_path, "train.csv"), index=False, header=None)
+    df.to_csv(os.path.join(os.path.dirname(__file__), "train.csv"), index=False, header=None)
     df = pd.DataFrame(valid_files)
-    df.to_csv(os.path.join(set_path, "valid.csv"), index=False, header=None)
+    df.to_csv(os.path.join(os.path.dirname(__file__), "valid.csv"), index=False, header=None)
     df = pd.DataFrame(test_files)
-    df.to_csv(os.path.join(set_path, "test.csv"), index=False, header=None)
+    df.to_csv(os.path.join(os.path.dirname(__file__), "test.csv"), index=False, header=None)
 
 
 if __name__ == "__main__":
