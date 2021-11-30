@@ -6,10 +6,12 @@ import toml
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle.framework import ParamAttr
+from paddle.nn.initializer import XavierNormal, Normal
 
-sys.path.append("./")
-from audiolib.audio import offline_laplace_norm, cumulative_laplace_norm
-from audiolib.feature import drop_band
+
+sys.path.append(os.getcwd())
+from audio.feature import offline_laplace_norm, cumulative_laplace_norm, drop_band
 
 
 class FullSubNet(nn.Layer):
@@ -37,8 +39,17 @@ class FullSubNet(nn.Layer):
             self.fullband_hidden_size,
             self.fullband_num_layers,
             dropout=self.dropout,
+            weight_ih_attr=ParamAttr(initializer=XavierNormal()),
+            weight_hh_attr=ParamAttr(initializer=XavierNormal()),
+            bias_ih_attr=ParamAttr(initializer=Normal()),
+            bias_hh_attr=ParamAttr(initializer=Normal()),
         )
-        self.fullband_fc = nn.Linear(self.fullband_hidden_size, self.num_freqs)
+        self.fullband_fc = nn.Linear(
+            self.fullband_hidden_size,
+            self.num_freqs,
+            weight_attr=ParamAttr(initializer=XavierNormal()),
+            bias_attr=ParamAttr(initializer=Normal()),
+        )
         self.fullband_activate = nn.ReLU()
 
         # subband net
@@ -47,8 +58,17 @@ class FullSubNet(nn.Layer):
             self.subband_hidden_size,
             self.subband_num_layers,
             dropout=self.dropout,
+            weight_ih_attr=ParamAttr(initializer=XavierNormal()),
+            weight_hh_attr=ParamAttr(initializer=XavierNormal()),
+            bias_ih_attr=ParamAttr(initializer=Normal()),
+            bias_hh_attr=ParamAttr(initializer=Normal()),
         )
-        self.subband_fc = nn.Linear(self.subband_hidden_size, 2)
+        self.subband_fc = nn.Linear(
+            self.subband_hidden_size,
+            2,
+            weight_attr=ParamAttr(initializer=XavierNormal()),
+            bias_attr=ParamAttr(initializer=Normal()),
+        )
 
         # loss
         self.loss = nn.MSELoss()
@@ -170,30 +190,42 @@ if __name__ == "__main__":
     # get config
     toml_path = os.path.join(os.path.dirname(__file__), "config.toml")
     config = toml.load(toml_path)
+    # get unzip path
+    root_path = os.path.abspath(config["path"]["root"])
+    zip_path = os.path.join(root_path, config["path"]["zip"])
+    unzip_path = os.path.splitext(zip_path)[0]
+    # get train args
+    use_amp = False if device == "cpu" else config["train"]["use_amp"]
+    clip_grad_norm_value = config["train"]["clip_grad_norm_value"]
 
     # config model
-    model = FullSubNet(config["model"]["args"])
+    model = FullSubNet(config["model"])
     print(model)
 
     # config optimizer
     optimizer = getattr(paddle.optimizer, config["train"]["optimizer"])(
         parameters=model.parameters(),
         learning_rate=config["train"]["lr"],
+        grad_clip=nn.ClipGradByNorm(clip_norm=clip_grad_norm_value),
     )
-    print(optimizer)
+
+    # scaler
+    scaler = paddle.amp.GradScaler()
 
     # gen test data
-    noisy_mag = paddle.randn([3, config["model"]["args"]["num_freqs"], 10])  # [B, F, T]
-    cIRM = paddle.randn([3, config["model"]["args"]["num_freqs"], 10, 2])  # [B, F, T, 2]
+    noisy_mag = paddle.randn([3, config["model"]["num_freqs"], 10])  # [B, F, T]
+    cIRM = paddle.randn([3, config["model"]["num_freqs"], 10, 2])  # [B, F, T, 2]
     cIRM = drop_band(
-        cIRM.transpose([0, 2, 1, 3]), num_groups=config["model"]["args"]["num_groups_in_drop_band"]
+        cIRM.transpose([0, 2, 1, 3]), num_groups=config["model"]["num_groups_in_drop_band"]
     ).transpose([0, 2, 1, 3])
 
     # test model and optimizer
-    cRM = model(noisy_mag)
-    loss = model.loss(cRM, cIRM)
-    loss.backward()
-    optimizer.step()
+    with paddle.amp.auto_cast(enable=use_amp):
+        cRM = model(noisy_mag)
+        loss = model.loss(cRM, cIRM)
+    scaled = scaler.scale(loss)
+    scaled.backward()
+    scaler.minimize(optimizer, scaled)
     optimizer.clear_grad()
 
     pass
