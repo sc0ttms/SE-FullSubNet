@@ -34,7 +34,7 @@ class Trainer:
 #         # get logs path
 #         self.logs_path = os.path.join(os.path.dirname(__file__), "logs", "train")
         # openi
-        output_path = "/model"
+        output_path = "/model/FullBandNet"
         # get checkpoints path
         self.checkpoints_path = os.path.join(output_path, "checkpoints")
         # get logs path

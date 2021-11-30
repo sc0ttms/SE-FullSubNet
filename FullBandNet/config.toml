@@ -10,8 +10,8 @@ root = "/"
 zip = "code/dataset"
 
 [dataloader]
-batch_size = 20
-num_workers = 4
+batch_size = 512
+num_workers = 8
 drop_last = false
 
 [dataset]
@@ -36,7 +36,7 @@ optimizer = "Adam"
 lr = 1e-3
 epochs = 9999
 save_checkpoint_interval = 1
-valid_interval = 1
+valid_interval = 50
 clip_grad_norm_value = 10.0
 audio_visual_samples = 20
 
