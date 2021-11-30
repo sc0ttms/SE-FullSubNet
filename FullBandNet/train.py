@@ -29,10 +29,16 @@ plt.switch_backend("agg")
 
 class Trainer:
     def __init__(self, model, train_iter, valid_iter, config, device):
+#         # get checkpoints path
+#         self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
+#         # get logs path
+#         self.logs_path = os.path.join(os.path.dirname(__file__), "logs", "train")
+        # openi
+        output_path = "/model"
         # get checkpoints path
-        self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
+        self.checkpoints_path = os.path.join(output_path, "checkpoints")
         # get logs path
-        self.logs_path = os.path.join(os.path.dirname(__file__), "logs", "train")
+        self.logs_path = os.path.join(output_path, "logs", "train")
 
         # get dataset args
         self.sr = config["dataset"]["sr"]
