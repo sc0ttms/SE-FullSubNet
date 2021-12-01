@@ -62,14 +62,6 @@ def gen(set_path, config):
 
 
 if __name__ == "__main__":
-    # get unzip config
-    toml_path = os.path.join(os.path.dirname(__file__), "unzip_cfg.toml")
-    config = toml.load(toml_path)
-    # get unzip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
-    unzip_path = os.path.splitext(zip_path)[0]
-
     # get gen csv config
     toml_path = os.path.join(os.path.dirname(__file__), "gen_cfg.toml")
     config = toml.load(toml_path)
@@ -78,5 +70,8 @@ if __name__ == "__main__":
     # set seed
     np.random.seed(seed)
 
+    # get dataset path
+    dataset_path = config["path"]["dataset"]
+
     # gen set
-    gen(unzip_path, config)
+    gen(dataset_path, config)
