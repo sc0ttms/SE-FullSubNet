@@ -189,17 +189,15 @@ if __name__ == "__main__":
     toml_path = os.path.join(os.path.dirname(__file__), "config.toml")
     config = toml.load(toml_path)
 
-    # get unzip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
-    unzip_path = os.path.splitext(zip_path)[0]
+    # get dataset path
+    dataset_path = os.path.join(os.getcwd(), "dataset_csv")
 
     # get dataloader args
     num_workers = 0 if device == "cpu" else config["dataloader"]["num_workers"]
     drop_last = config["dataloader"]["drop_last"]
 
     # get test_iter
-    test_set = DNS_Dataset(unzip_path, config, mode="test")
+    test_set = DNS_Dataset(dataset_path, config, mode="test")
     test_iter = DataLoader(
         test_set,
         batch_size=1,
