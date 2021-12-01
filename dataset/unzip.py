@@ -15,8 +15,7 @@ if __name__ == "__main__":
     config = toml.load(toml_path)
 
     # get datasets zip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
+    zip_path = config["path"]["zip"]
 
     # extract datasets zip
     unzip_path = os.path.splitext(zip_path)[0]
