@@ -271,8 +271,9 @@ class Trainer:
             noisy_mag = paddle.abs(noisy_spec)
             cIRM = get_cIRM(noisy_spec, clean_spec)
 
-            cRM = self.model(noisy_mag)
-            loss = self.model.loss(cRM, cIRM)
+            with paddle.no_grad():
+                cRM = self.model(noisy_mag)
+                loss = self.model.loss(cRM, cIRM)
 
             loss_total += loss.item()
 
