@@ -39,8 +39,8 @@ class DNS_Dataset(Dataset):
         # limit
         limit = config["dataset"]["limit"]
         if limit:
-            noisy_files = noisy_files[:, limit]
-            clean_files = clean_files[:, limit]
+            noisy_files = noisy_files[:limit]
+            clean_files = clean_files[:limit]
         self.noisy_files = noisy_files
         self.clean_files = clean_files
 
