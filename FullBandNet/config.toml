@@ -2,7 +2,8 @@
 seed = 0
 
 [path]
-base = "./output/FullBandNet"
+# base = "./output/FullBandNet"
+base = "/model/FullBandNet"
 
 [dataloader]
 batch_size = 512

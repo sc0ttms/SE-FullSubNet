@@ -2,11 +2,12 @@
 seed = 0
 
 [path]
-base = "./output/FullSubNet"
+# base = "./output/FullSubNet"
+base = "/model/FullSubNet"
 
 [dataloader]
 batch_size = 20
-num_workers = 4
+num_workers = 8
 drop_last = false
 
 [dataset]
@@ -15,7 +16,7 @@ n_fft = 512
 win_len = 512
 hop_len = 256
 audio_len = 3.072
-limit = 0
+limit = 4
 
 [model]
 num_freqs = 257
@@ -38,7 +39,7 @@ epochs = 9999
 save_checkpoint_interval = 1
 valid_interval = 10
 clip_grad_norm_value = 10.0
-audio_visual_samples = 20
+audio_visual_samples = 5
 
 [inference]
-audio_visual_samples = 20
+audio_visual_samples = 5
