@@ -190,10 +190,6 @@ if __name__ == "__main__":
     # get config
     toml_path = os.path.join(os.path.dirname(__file__), "config.toml")
     config = toml.load(toml_path)
-    # get unzip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
-    unzip_path = os.path.splitext(zip_path)[0]
     # get train args
     use_amp = False if device == "cpu" else config["train"]["use_amp"]
     clip_grad_norm_value = config["train"]["clip_grad_norm_value"]
