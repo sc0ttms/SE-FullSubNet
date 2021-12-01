@@ -2,9 +2,7 @@
 seed = 0
 
 [path]
-root = "../../data/data119056"
-# root = "D:/ML/datasets"
-zip = "dns_interspeech_2021_mandarin_100h.zip"
+base = "./output/FullSubNet"
 
 [dataloader]
 batch_size = 20
@@ -36,9 +34,9 @@ use_amp = true
 resume = false
 optimizer = "Adam"
 lr = 1e-3
-epochs = 500
+epochs = 9999
 save_checkpoint_interval = 1
-valid_interval = 5
+valid_interval = 10
 clip_grad_norm_value = 10.0
 audio_visual_samples = 20
 
