@@ -29,16 +29,13 @@ plt.switch_backend("agg")
 
 class Trainer:
     def __init__(self, model, train_iter, valid_iter, config, device):
-#         # get checkpoints path
-#         self.checkpoints_path = os.path.join(os.path.dirname(__file__), "checkpoints")
-#         # get logs path
-#         self.logs_path = os.path.join(os.path.dirname(__file__), "logs", "train")
-        # openi
-        output_path = "/model/FullBandNet"
+        # set path
+        base_path = config["path"]["base"]
+        os.makedirs(base_path, exist_ok=True)
         # get checkpoints path
-        self.checkpoints_path = os.path.join(output_path, "checkpoints")
+        self.checkpoints_path = os.path.join(base_path, "checkpoints")
         # get logs path
-        self.logs_path = os.path.join(output_path, "logs", "train")
+        self.logs_path = os.path.join(base_path, "logs", "train")
 
         # get dataset args
         self.sr = config["dataset"]["sr"]
@@ -348,10 +345,8 @@ if __name__ == "__main__":
     # seed = config["random"]["seed"]
     # np.random.seed(seed)
 
-    # get unzip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
-    unzip_path = os.path.splitext(zip_path)[0]
+    # get dataset path
+    dataset_path = os.path.join(os.getcwd(), "dataset_csv")
 
     # get dataloader args
     batch_size = config["dataloader"]["batch_size"]
@@ -359,7 +354,7 @@ if __name__ == "__main__":
     drop_last = config["dataloader"]["drop_last"]
 
     # get train_iter
-    train_set = DNS_Dataset(unzip_path, config, mode="train")
+    train_set = DNS_Dataset(dataset_path, config, mode="train")
     train_iter = DataLoader(
         train_set,
         batch_size=batch_size,
@@ -369,7 +364,7 @@ if __name__ == "__main__":
     )
 
     # get valid_iter
-    valid_set = DNS_Dataset(unzip_path, config, mode="valid")
+    valid_set = DNS_Dataset(dataset_path, config, mode="valid")
     valid_iter = DataLoader(
         valid_set,
         batch_size=1,

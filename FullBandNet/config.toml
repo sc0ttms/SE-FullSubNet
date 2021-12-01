@@ -2,12 +2,7 @@
 seed = 0
 
 [path]
-# root = "../../data/data119056"
-# root = "D:/ML/datasets"
-# zip = "dns_interspeech_2021_mandarin_100h.zip"
-# openi
-root = "/"
-zip = "code/dataset"
+base = "./output/FullBandNet"
 
 [dataloader]
 batch_size = 512
