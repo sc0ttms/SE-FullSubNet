@@ -27,18 +27,13 @@ def comptute_metric(noisy_file, clean_file, sr=16000, metric_type="STOI"):
 
 
 if __name__ == "__main__":
-    # get unzip config
-    toml_path = os.path.join(os.path.dirname(__file__), "unzip_cfg.toml")
-    config = toml.load(toml_path)
-    # get unzip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
-    unzip_path = os.path.splitext(zip_path)[0]
+    # get dataset path
+    dataset_path = os.path.join(os.getcwd(), "dataset_csv")
 
     # get set path
-    train_path = os.path.join(unzip_path, "train.csv")
-    valid_path = os.path.join(unzip_path, "valid.csv")
-    test_path = os.path.join(unzip_path, "test.csv")
+    train_path = os.path.join(dataset_path, "train.csv")
+    valid_path = os.path.join(dataset_path, "valid.csv")
+    test_path = os.path.join(dataset_path, "test.csv")
 
     # get train files
     train_files = pd.read_csv(train_path).values
@@ -102,4 +97,4 @@ if __name__ == "__main__":
     metrics["WB_PESQ"].append(np.mean(test_wb_pesq_score))
 
     df = pd.DataFrame(metrics, index=["train", "valid", "test"])
-    df.to_csv(os.path.join(unzip_path, "metrics.csv"))
+    df.to_csv(os.path.join(dataset_path, "metrics.csv"))
