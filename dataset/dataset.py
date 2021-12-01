@@ -88,13 +88,8 @@ if __name__ == "__main__":
     paddle.set_device(device)
     print(f"device {device}")
 
-    # get unzip config
-    toml_path = os.path.join(os.path.dirname(__file__), "unzip_cfg.toml")
-    config = toml.load(toml_path)
-    # get unzip path
-    root_path = os.path.abspath(config["path"]["root"])
-    zip_path = os.path.join(root_path, config["path"]["zip"])
-    unzip_path = os.path.splitext(zip_path)[0]
+    # get dataset path
+    dataset_path = os.path.join(os.getcwd(), "dataset_csv")
 
     # get dataset config
     toml_path = os.path.join(os.path.dirname(__file__), "dataset_cfg.toml")
@@ -108,7 +103,7 @@ if __name__ == "__main__":
     drop_last = config["dataloader"]["drop_last"]
 
     # get train_iter
-    train_set = DNS_Dataset(unzip_path, config, mode="train")
+    train_set = DNS_Dataset(dataset_path, config, mode="train")
     train_iter = DataLoader(
         train_set,
         batch_size=batch_size,
@@ -121,7 +116,7 @@ if __name__ == "__main__":
         print(noisy.dtype, clean.dtype)
 
     # get valid_iter
-    valid_set = DNS_Dataset(unzip_path, config, mode="valid")
+    valid_set = DNS_Dataset(dataset_path, config, mode="valid")
     valid_iter = DataLoader(
         valid_set,
         batch_size=1,
@@ -134,7 +129,7 @@ if __name__ == "__main__":
         print(noisy.dtype, clean.dtype)
 
     # get test_iter
-    test_set = DNS_Dataset(unzip_path, config, mode="test")
+    test_set = DNS_Dataset(dataset_path, config, mode="test")
     test_iter = DataLoader(
         test_set,
         batch_size=1,
