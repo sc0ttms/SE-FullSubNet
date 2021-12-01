@@ -8,7 +8,6 @@ seed = 0
 # dataset = "../../data/data119056/dns_interspeech_2021_mandarin_100h"
 # openi
 dataset = "/dataset"
-output = "../gen_csv"
 
 [dataset]
 audio_format = "wav"
