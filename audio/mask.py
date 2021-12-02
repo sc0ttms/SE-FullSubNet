@@ -43,7 +43,7 @@ def get_cIRM(noisy_spec, clean_spec):
 
         cIRM_real = (noisy_real * clean_real + noisy_imag * clean_imag) / denominator
         cIRM_imag = (noisy_real * clean_imag - noisy_imag * clean_real) / denominator
-        cIRM = paddle.stack((cIRM_real, cIRM_imag), axis=-1)
+        cIRM = paddle.stack([cIRM_real, cIRM_imag], axis=-1)
     else:
         noisy_real = np.real(noisy_spec)
         noisy_imag = np.imag(noisy_spec)
