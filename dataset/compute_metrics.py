@@ -10,7 +10,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 sys.path.append(os.getcwd())
-from audio.metrics import SI_SDR, STOI, WB_PESQ
+from audio.metrics import SI_SDR, STOI, WB_PESQ, NB_PESQ
 
 
 def comptute_metric(noisy_file, clean_file, sr=16000, metric_type="STOI"):
@@ -26,6 +26,8 @@ def comptute_metric(noisy_file, clean_file, sr=16000, metric_type="STOI"):
         return STOI(noisy, clean, sr=sr)
     elif metric_type in ["WB_PESQ"]:
         return WB_PESQ(noisy, clean)
+    elif metric_type in ["NB_PESQ"]:
+        return NB_PESQ(noisy, clean)
 
 
 if __name__ == "__main__":
@@ -61,6 +63,7 @@ if __name__ == "__main__":
         "SI_SDR": [],
         "STOI": [],
         "WB_PESQ": [],
+        "NB_PESQ": [],
     }
 
     # compute train metrics
@@ -76,9 +79,14 @@ if __name__ == "__main__":
         delayed(comptute_metric)(noisy_file, clean_file, metric_type="WB_PESQ")
         for noisy_file, clean_file in tqdm(zip(train_noisy_files, train_clean_files))
     )
+    train_nb_pesq_score = Parallel(n_jobs=n_jobs)(
+        delayed(comptute_metric)(noisy_file, clean_file, sr=8000, metric_type="NB_PESQ")
+        for noisy_file, clean_file in tqdm(zip(train_noisy_files, train_clean_files))
+    )
     metrics["SI_SDR"].append(np.mean(train_si_sdr_score))
     metrics["STOI"].append(np.mean(train_stoi_score))
     metrics["WB_PESQ"].append(np.mean(train_wb_pesq_score))
+    metrics["NB_PESQ"].append(np.mean(train_nb_pesq_score))
 
     # compute valid metrics
     valid_si_sdr_score = Parallel(n_jobs=n_jobs)(
@@ -93,9 +101,14 @@ if __name__ == "__main__":
         delayed(comptute_metric)(noisy_file, clean_file, metric_type="WB_PESQ")
         for noisy_file, clean_file in tqdm(zip(valid_noisy_files, valid_clean_files))
     )
+    valid_nb_pesq_score = Parallel(n_jobs=n_jobs)(
+        delayed(comptute_metric)(noisy_file, clean_file, sr=8000, metric_type="NB_PESQ")
+        for noisy_file, clean_file in tqdm(zip(valid_noisy_files, valid_clean_files))
+    )
     metrics["SI_SDR"].append(np.mean(valid_si_sdr_score))
     metrics["STOI"].append(np.mean(valid_stoi_score))
     metrics["WB_PESQ"].append(np.mean(valid_wb_pesq_score))
+    metrics["NB_PESQ"].append(np.mean(valid_nb_pesq_score))
 
     # compute test metrics
     test_si_sdr_score = Parallel(n_jobs=n_jobs)(
@@ -110,9 +123,14 @@ if __name__ == "__main__":
         delayed(comptute_metric)(noisy_file, clean_file, metric_type="WB_PESQ")
         for noisy_file, clean_file in tqdm(zip(test_noisy_files, test_clean_files))
     )
+    test_nb_pesq_score = Parallel(n_jobs=n_jobs)(
+        delayed(comptute_metric)(noisy_file, clean_file, sr=8000, metric_type="NB_PESQ")
+        for noisy_file, clean_file in tqdm(zip(test_noisy_files, test_clean_files))
+    )
     metrics["SI_SDR"].append(np.mean(test_si_sdr_score))
     metrics["STOI"].append(np.mean(test_stoi_score))
     metrics["WB_PESQ"].append(np.mean(test_wb_pesq_score))
+    metrics["NB_PESQ"].append(np.mean(test_nb_pesq_score))
 
     df = pd.DataFrame(metrics, index=["train", "valid", "test"])
     df.to_csv(os.path.join(dataset_path, "metrics.csv"))

@@ -63,6 +63,23 @@ def WB_PESQ(noisy, clean, sr=16000):
         print(f"submit issue to https://github.com/ludlows/python-pesq")
 
 
+def NB_PESQ(noisy, clean, sr=8000):
+    """NB_PESQ
+
+    Args:
+        clean (array): clean data
+        noisy (array): noisy data
+        sr (int, optional): sample rate. Defaults to 8000.
+
+    Returns:
+        score: wb pesq score
+    """
+    try:
+        return pesq(sr, clean, noisy, "nb")
+    except PesqError as e:
+        print(f"submit issue to https://github.com/ludlows/python-pesq")
+
+
 def transform_pesq_range(pesq_score):
     """transform PESQ metric range from [-0.5 ~ 4.5] to [0 ~ 1]
     Args:
