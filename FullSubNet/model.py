@@ -88,14 +88,18 @@ class FullSubNet(nn.Layer):
 
         # norm
         if self.mode in ["train", "valid"]:
+            # [B, F, T]
             fullband_in = offline_laplace_norm(noisy_mag).reshape([batch_size, num_channels * num_freqs, num_frames])
         else:
+            # [B, F, T]
             fullband_in = cumulative_laplace_norm(noisy_mag).reshape([batch_size, num_channels * num_freqs, num_frames])
 
         # fullband net
+        # [B, F, T] -> [B, T, F]
         fullband_out, _ = self.fullband_seq(fullband_in.transpose([0, 2, 1]))
         fullband_out = self.fullband_fc(fullband_out)
         fullband_out = self.fullband_activate(fullband_out)
+        # [B, T, F] -> [B, F, T] -> [B, 1, F, T]
         fullband_out = fullband_out.transpose([0, 2, 1]).reshape([batch_size, 1, num_freqs, num_frames])
 
         # Unfold fullband model's output, [B, N=F, C, F_f, T]. N is the number of sub-band units
@@ -135,12 +139,15 @@ class FullSubNet(nn.Layer):
         )
 
         # subband net
+        # [B*F, F_s+F_f, T] -> [B*F, T, F_s+F_f]
         subband_out, _ = self.subband_seq(subband_in.transpose([0, 2, 1]))
-        subband_out = self.subband_fc(subband_out)  # [B*F, 2, T]
-        subband_out = subband_out.reshape([batch_size, num_freqs, 2, num_frames])  # [B, F, 2, T]
-        subband_out = subband_out.transpose([0, 2, 1, 3])  # [B, 2, F, T]
+        # -> [B*F, T, 2]
+        subband_out = self.subband_fc(subband_out)
+        # -> [B, F, 2, T]
+        subband_out = subband_out.reshape([batch_size, num_freqs, 2, num_frames])
 
-        subband_out = subband_out[:, :, :, self.look_ahead :].transpose([0, 2, 3, 1])
+        # -> [B, F, T, 2]
+        subband_out = subband_out[:, :, :, self.look_ahead :].transpose([0, 1, 3, 2])
         return subband_out  # [B, F, T, 2]
 
     @staticmethod
@@ -163,7 +170,7 @@ class FullSubNet(nn.Layer):
         [batch_size, num_channels, num_freqs, num_frames] = input.shape
 
         if num_neighbors < 1:  # No change on the input
-            return input.transpose([0, 2, 1, 3]).reshape([batch_size, num_freqs, num_channels, 1, num_frames])
+            return input.transpose([0, 2, 1, 3])  # [B, N, C, F_s, T]
 
         output = input.reshape([batch_size * num_channels, 1, num_freqs, num_frames])
         subband_unit_size = num_neighbors * 2 + 1
@@ -212,7 +219,8 @@ if __name__ == "__main__":
     noisy_mag = paddle.randn([3, config["model"]["num_freqs"], 10])  # [B, F, T]
     cIRM = paddle.randn([3, config["model"]["num_freqs"], 10, 2])  # [B, F, T, 2]
     cIRM = drop_band(
-        cIRM.transpose([0, 2, 1, 3]), num_groups=config["model"]["num_groups_in_drop_band"]
+        cIRM.transpose([0, 2, 1, 3]),
+        num_groups=config["model"]["num_groups_in_drop_band"],
     ).transpose([0, 2, 1, 3])
 
     # test model and optimizer
