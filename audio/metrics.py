@@ -1,8 +1,35 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
 from pystoi.stoi import stoi
 from pesq import pesq
 from pesq import PesqError
+
+
+def SI_SDR(noisy, clean, sr=16000):
+    """Scale-Invariant Signal-to-Distortion Ratio (SI-SDR)
+
+    Args:
+        noisy: numpy.ndarray, [..., T]
+        clean: numpy.ndarray, [..., T]
+
+    Returns:
+        SI-SDR
+
+    References
+        SDR– Half- Baked or Well Done? (http://www.merl.com/publications/docs/TR2019-013.pdf)
+    """
+    noisy, clean = np.broadcast_arrays(noisy, clean)
+    clean_energy = np.sum(clean ** 2, axis=-1, keepdims=True)
+
+    optimal_scaling = np.sum(clean * noisy, axis=-1, keepdims=True) / clean_energy
+
+    projection = optimal_scaling * clean
+
+    noise = noisy - projection
+
+    ratio = np.sum(projection ** 2, axis=-1) / np.sum(noise ** 2, axis=-1)
+    return 10 * np.log10(ratio)
 
 
 def STOI(noisy, clean, sr=16000):
