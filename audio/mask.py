@@ -17,7 +17,7 @@ def compress_cIRM(mask, K=10, C=0.1):
         return mask.astype(np.float32)
 
 
-def decompress_cIRM(mask, K=10, limit=9.9):
+def decompress_cIRM(mask, K=10, limit=9.999):
     if paddle.is_tensor(mask):
         mask = (
             limit * (mask >= limit).astype(paddle.float32)
