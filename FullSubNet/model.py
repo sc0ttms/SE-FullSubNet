@@ -203,7 +203,16 @@ if __name__ == "__main__":
 
     # config model
     model = FullSubNet(config["model"])
-    print(model)
+    print(
+        paddle.summary(
+            model,
+            input_size=(
+                config["dataloader"]["batch_size"],
+                config["model"]["num_freqs"],
+                int(config["dataset"]["sr"] * config["dataset"]["audio_len"] // config["dataset"]["hop_len"] - 1),
+            ),
+        )
+    )
 
     # config optimizer
     optimizer = getattr(paddle.optimizer, config["train"]["optimizer"])(
