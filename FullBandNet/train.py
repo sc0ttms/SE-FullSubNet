@@ -37,11 +37,18 @@ class Trainer:
         # get logs path
         self.logs_path = os.path.join(base_path, "logs", "train")
 
+        # get dataloader args
+        self.batch_size = config["dataloader"]["batch_size"]
+
+        # get model args
+        self.num_freqs = config["model"]["num_freqs"]
+
         # get dataset args
         self.sr = config["dataset"]["sr"]
         self.n_fft = config["dataset"]["n_fft"]
         self.win_len = config["dataset"]["win_len"]
         self.hop_len = config["dataset"]["hop_len"]
+        self.audio_len = config["dataset"]["audio_len"]
         self.window = paddle.to_tensor(np.hanning(self.win_len), dtype=paddle.float32)
 
         # get train args
@@ -126,13 +133,8 @@ class Trainer:
         print(f"Model checkpoint loaded. Training will begin at {self.start_epoch} epoch.")
 
     def print_networks(self):
-        print(self.model)
-
-        params_of_network = 0
-        for param in model.parameters():
-            params_of_network += param.numel()
-
-        print(f"Params of Network: {params_of_network / 1e6} million.")
+        input_size = (self.batch_size, self.num_freqs, int(self.sr * self.audio_len / self.hop_len - 1))
+        print(paddle.summary(self.model, input_size=input_size))
 
     def is_best_epoch(self, score):
         if score > self.best_score:
