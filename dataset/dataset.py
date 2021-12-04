@@ -11,6 +11,10 @@ import paddle
 from paddle.io import Dataset, DataLoader
 
 
+sys.path.append(os.getcwd())
+from audio.feature import sub_sample
+
+
 class DNS_Dataset(Dataset):
     def __init__(self, set_path, config, mode="train"):
         super().__init__()
@@ -56,13 +60,14 @@ class DNS_Dataset(Dataset):
             clean_file = self.clean_files[idx]
             clean, _ = librosa.load(clean_file, sr=self.sr)
             # get target samples
-            chs = int(len(noisy) // self.samples)
-            noisy = noisy[: chs * self.samples].reshape(-1, self.samples)
-            clean = clean[: chs * self.samples].reshape(-1, self.samples)
-            indices = list(range(noisy.shape[0]))
-            np.random.shuffle(indices)
-            noisy = noisy[indices]
-            clean = clean[indices]
+            noisy, clean = sub_sample(noisy, clean, self.samples)
+            # chs = int(len(noisy) // self.samples)
+            # noisy = noisy[: chs * self.samples].reshape(-1, self.samples)
+            # clean = clean[: chs * self.samples].reshape(-1, self.samples)
+            # indices = list(range(noisy.shape[0]))
+            # np.random.shuffle(indices)
+            # noisy = noisy[indices]
+            # clean = clean[indices]
 
             # to tensor
             noisy = paddle.to_tensor(noisy)
