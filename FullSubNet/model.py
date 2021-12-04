@@ -143,11 +143,11 @@ class FullSubNet(nn.Layer):
         subband_out, _ = self.subband_seq(subband_in.transpose([0, 2, 1]))
         # -> [B*F, T, 2]
         subband_out = self.subband_fc(subband_out)
-        # -> [B, F, 2, T]
-        subband_out = subband_out.reshape([batch_size, num_freqs, 2, num_frames])
+        # -> [B, F, T, 2]
+        subband_out = subband_out.reshape([batch_size, num_freqs, num_frames, 2])
 
         # -> [B, F, T, 2]
-        subband_out = subband_out[:, :, :, self.look_ahead :].transpose([0, 1, 3, 2])
+        subband_out = subband_out[:, :, self.look_ahead:, :]
         return subband_out  # [B, F, T, 2]
 
     @staticmethod
