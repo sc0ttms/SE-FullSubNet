@@ -30,7 +30,7 @@ class SubBandNet(nn.Layer):
         self.look_ahead = config["look_ahead"]
 
         # subband net
-        self.subband_seq = nn.LSTM(
+        self.subband_seq_l1 = nn.LSTM(
             (self.subband_num_neighbors * 2 + 1),
             self.subband_hidden_size[0],
             1,
@@ -40,7 +40,7 @@ class SubBandNet(nn.Layer):
             bias_ih_attr=ParamAttr(initializer=Normal()),
             bias_hh_attr=ParamAttr(initializer=Normal()),
         )
-        self.subband_seq2 = nn.LSTM(
+        self.subband_seq_l2 = nn.LSTM(
             self.subband_hidden_size[0],
             self.subband_hidden_size[1],
             1,
@@ -100,8 +100,8 @@ class SubBandNet(nn.Layer):
 
         # subband net
         # [B*F, F_s, T] -> [B*F, T, F_s]
-        subband_out, _ = self.subband_seq(subband_in.transpose([0, 2, 1]))
-        subband_out, _ = self.subband_seq2(subband_out)
+        subband_out, _ = self.subband_seq_l1(subband_in.transpose([0, 2, 1]))
+        subband_out, _ = self.subband_seq_l2(subband_out)
         # -> [B*F, T, 2]
         subband_out = self.subband_fc(subband_out)
         # -> [B, F, T, 2]
