@@ -249,11 +249,11 @@ class Trainer:
             clean_spec = stft(clean, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
 
             noisy_mag = paddle.abs(noisy_spec)
-            cIRM = get_cIRM(noisy_spec, clean_spec)
+            cIRM = get_cIRM(noisy_spec, clean_spec) # [B, F, T, 2]
             cIRM = drop_band(
-                cIRM.transpose([0, 2, 1, 3]),
+                cIRM.transpose([0, 3, 1, 2]),
                 num_groups=self.model.num_groups_in_drop_band,
-            ).transpose([0, 2, 1, 3])
+            ).transpose([0, 2, 3, 1])
 
             with auto_cast(enable=self.use_amp):
                 cRM = self.model(noisy_mag)

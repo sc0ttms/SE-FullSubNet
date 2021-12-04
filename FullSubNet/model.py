@@ -228,9 +228,9 @@ if __name__ == "__main__":
     noisy_mag = paddle.randn([3, config["model"]["num_freqs"], 10])  # [B, F, T]
     cIRM = paddle.randn([3, config["model"]["num_freqs"], 10, 2])  # [B, F, T, 2]
     cIRM = drop_band(
-        cIRM.transpose([0, 2, 1, 3]),
+        cIRM.transpose([0, 3, 1, 2]),
         num_groups=config["model"]["num_groups_in_drop_band"],
-    ).transpose([0, 2, 1, 3])
+    ).transpose([0, 2, 3, 1])
 
     # test model and optimizer
     with paddle.amp.auto_cast(enable=use_amp):
