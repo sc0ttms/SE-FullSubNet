@@ -1,0 +1,41 @@
+[random]
+seed = 0
+
+[path]
+# base = "./output/SubBandNet"
+base = "/model/SubBandNet"
+
+[dataloader]
+batch_size = 40
+num_workers = 8
+drop_last = false
+
+[dataset]
+sr = 16000
+n_fft = 512
+win_len = 512
+hop_len = 256
+audio_len = 3.072
+limit = 0
+
+[model]
+num_freqs = 257
+subband_num_neighbors = 15
+subband_hidden_size = [384, 256]
+num_groups_in_drop_band = 2
+dropout = 0
+look_ahead = 2
+
+[train]
+use_amp = true
+resume = false
+optimizer = "Adam"
+lr = 1e-3
+epochs = 9999
+save_checkpoint_interval = 1
+valid_interval = 2
+clip_grad_norm_value = 10.0
+audio_visual_samples = 3
+
+[inference]
+audio_visual_samples = 3
