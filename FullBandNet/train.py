@@ -240,9 +240,9 @@ class Trainer:
         for noisy, clean in tqdm(self.train_iter, desc="train"):
             self.optimizer.clear_grad()
 
-            [batch_size, num_channels, num_samples] = noisy.shape
-            noisy = noisy.reshape([batch_size * num_channels, num_samples])
-            clean = clean.reshape([batch_size * num_channels, num_samples])
+            # [batch_size, num_channels, num_samples] = noisy.shape
+            # noisy = noisy.reshape([batch_size * num_channels, num_samples])
+            # clean = clean.reshape([batch_size * num_channels, num_samples])
 
             noisy_spec = stft(noisy, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
             clean_spec = stft(clean, self.n_fft, hop_length=self.hop_len, win_length=self.win_len, window=self.window)
