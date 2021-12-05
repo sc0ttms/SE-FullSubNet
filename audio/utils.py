@@ -40,6 +40,6 @@ def prepare_empty_path(paths, resume=False):
     """
     for path in paths:
         if resume:
-            assert os.path.exists(path)
+            assert not os.path.exists(path)
         else:
             os.makedirs(path, exist_ok=True)
