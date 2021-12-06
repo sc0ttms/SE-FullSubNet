@@ -144,8 +144,9 @@ class Trainer:
             return False
 
     def audio_visualization(self, noisy, clean, enh, name, epoch):
-        self.writer.add_audio(f"audio/{name}_noisy", noisy, epoch, sample_rate=self.sr)
-        self.writer.add_audio(f"audio/{name}_clean", clean, epoch, sample_rate=self.sr)
+        if epoch == self.start_epoch:
+            self.writer.add_audio(f"audio/{name}_noisy", noisy, epoch, sample_rate=self.sr)
+            self.writer.add_audio(f"audio/{name}_clean", clean, epoch, sample_rate=self.sr)
         self.writer.add_audio(f"audio/{name}_enh", enh, epoch, sample_rate=self.sr)
 
         # Visualize the spectrogram of noisy speech, clean speech, and enhanced speech
